@@ -1,5 +1,6 @@
-using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class DamageableDummy : MonoBehaviour
@@ -64,7 +65,6 @@ public class DamageableDummy : MonoBehaviour
         }
 
         float angleFromUp = Vector3.Angle(transform.up, Vector3.up);
-
         if (angleFromUp > knockdownAngle)
         {
             StartCoroutine(RightAfterDelay());
@@ -80,11 +80,11 @@ public class DamageableDummy : MonoBehaviour
     {
         if (collision.rigidbody == null) return;
 
-        // === Held Object ===
         Holdable holdable = collision.rigidbody.GetComponent<Holdable>();
         PlayerStats stats = collision.rigidbody.GetComponentInParent<PlayerStats>();
         float playerStrength = (stats != null) ? stats.strength : 0f;
 
+        // === DAMAGE FROM HELD OBJECT ===
         if (holdable != null)
         {
             float impactVelocity = collision.relativeVelocity.magnitude;
@@ -110,53 +110,37 @@ public class DamageableDummy : MonoBehaviour
             return;
         }
 
-        // === Player Collision ===
-        if (stats != null)
+        // === COLLISION WITH PLAYER BODY ===
+        if (stats != null && playerStrength < weight)
         {
-            if (playerStrength < weight)
-            {
-                StartCoroutine(LockPhysicsTemporarily());
+            StartCoroutine(LockPhysicsTemporarily());
 
-                Rigidbody playerRb = collision.rigidbody;
-                if (playerRb != null)
+            Rigidbody playerRb = collision.rigidbody;
+            if (playerRb != null)
+            {
+                // 1. Disable movement and aim at dummy
+                PlayerMovement pm = playerRb.GetComponent<PlayerMovement>();
+                if (pm != null)
                 {
-                    float ratio = Mathf.Clamp01(1f - (playerStrength / weight));
-
-                    // Clean horizontal direction away from dummy
-                    Vector3 bounceDir = (playerRb.position - transform.position);
-                    bounceDir.y = 0f; // flatten bounce direction
-                    bounceDir = bounceDir.normalized;
-
-                    // Slam downward to force ground hit
-                    Vector3 downwardSlam = Vector3.down * 10f;
-
-                    // Total bounce force
-                    float bounceForce = Mathf.Lerp(5f, 20f, ratio) * bounceMultiplier;
-                    Vector3 totalForce = (bounceDir * bounceForce) + downwardSlam;
-
-                    // Apply to player
-                    playerRb.AddForce(totalForce, ForceMode.Impulse);
-
-                    // Lock movement temporarily
-                    PlayerMovement pm = playerRb.GetComponent<PlayerMovement>();
-                    if (pm != null)
-                    {
-                        pm.DisableMovement(0.5f);
-                    }
-
-                    // Slide effect
-                    playerRb.drag = 0.5f;
-                    playerRb.angularDrag = 5f;
+                    pm.ApplyKnockStun(0.5f, transform.position);
                 }
-            }
-            else
-            {
-                Vector3 pushDir = collision.relativeVelocity.normalized;
-                float pushForce = collision.relativeVelocity.magnitude * (playerStrength / weight) * 3f;
-                rb.AddForce(pushDir * pushForce, ForceMode.Impulse);
+
+                // 2. Hover player up briefly
+                Vector3 hoverPos = playerRb.position + Vector3.up * 2f;
+                playerRb.MovePosition(hoverPos);
+                playerRb.velocity = Vector3.zero;
+                playerRb.angularVelocity = Vector3.zero;
+
+                // 3. Launch after delay
+                StartCoroutine(DelayedKnockbackLaunch(playerRb));
             }
         }
-
+        else if (stats != null)
+        {
+            Vector3 pushDir = collision.relativeVelocity.normalized;
+            float pushForce = collision.relativeVelocity.magnitude * (playerStrength / weight) * 3f;
+            rb.AddForce(pushDir * pushForce, ForceMode.Impulse);
+        }
     }
 
     IEnumerator LockPhysicsTemporarily()
@@ -169,6 +153,25 @@ public class DamageableDummy : MonoBehaviour
         lockTimer = 0.5f;
 
         yield return null;
+    }
+
+    IEnumerator DelayedKnockbackLaunch(Rigidbody playerRb)
+    {
+        yield return new WaitForSeconds(0.5f);
+
+        Vector3 away = (playerRb.position - transform.position);
+        away.y = 0f; // flatten
+        away.Normalize();
+
+        float randomAngle = Random.Range(-30f, 30f);
+        Vector3 launchDir = Quaternion.AngleAxis(randomAngle, Vector3.up) * away;
+
+        Vector3 launchVector = (launchDir + Vector3.down * 0.5f).normalized * (weight * bounceMultiplier);
+        playerRb.AddForce(launchVector, ForceMode.Impulse);
+
+        // Slide effect
+        playerRb.drag = 0.5f;
+        playerRb.angularDrag = 5f;
     }
 
     IEnumerator RightAfterDelay()
