@@ -11,6 +11,11 @@ public class Holdable : MonoBehaviour
     [Header("Object Stats")]
     public float weight = 1.0f;
     public bool lockRotation = false;
+    public bool isWeapon = false;
+
+    [Header("Health Settings")]
+    public float maxDurability = 5f;
+    private float currentDurability;
 
     [Header("Force Settings")]
     [SerializeField] private float baseSpringStrength = 800f;
@@ -22,6 +27,7 @@ public class Holdable : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        currentDurability = maxDurability;
     }
 
     public void PickUp(Transform target)
@@ -55,7 +61,6 @@ public class Holdable : MonoBehaviour
         float springStrength = baseSpringStrength * strengthRatio;
         float damper = baseDamper * strengthRatio;
 
-        // Spring force
         Vector3 springForce = toTarget * springStrength;
         Vector3 dampingForce = -rb.velocity * damper;
 
@@ -63,17 +68,28 @@ public class Holdable : MonoBehaviour
         totalForce = Vector3.ClampMagnitude(totalForce, maxForce);
         rb.AddForce(totalForce, ForceMode.Force);
 
-        // Optional downward pull (helps settle heavy stuff)
         if (strengthRatio < 0.8f)
         {
             rb.AddForce(Vector3.down * weight * (1f - strengthRatio), ForceMode.Acceleration);
         }
 
-        // Rotation lock
         if (lockRotation)
         {
             Quaternion targetRot = followTarget.rotation;
             rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRot, Time.fixedDeltaTime * 5f));
         }
     }
+
+    public void ApplyDurabilityDamage(float amount)
+    {
+        currentDurability -= amount;
+
+        if (currentDurability <= 0f)
+        {
+            Destroy(gameObject); // Can later play VFX/sound here
+        }
+    }
+
+    public float GetCurrentDurability() => currentDurability;
+    public bool IsWeapon() => isWeapon;
 }
