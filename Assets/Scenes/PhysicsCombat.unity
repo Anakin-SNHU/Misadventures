@@ -2018,6 +2018,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2047258508183427484, guid: 98d03aa31c368a34eac76865633bbf4d, type: 3}
+      propertyPath: weight
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2047258508183427484, guid: 98d03aa31c368a34eac76865633bbf4d, type: 3}
       propertyPath: maxDurability
       value: 1
       objectReference: {fileID: 0}
@@ -2156,6 +2160,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 991511204}
     m_Modifications:
+    - target: {fileID: 2594630077381202525, guid: 47db44f3b8ed84046bfaed27a24e2328, type: 3}
+      propertyPath: maxHP
+      value: 1500
+      objectReference: {fileID: 0}
     - target: {fileID: 3935147371308025126, guid: 47db44f3b8ed84046bfaed27a24e2328, type: 3}
       propertyPath: m_LocalPosition.x
       value: -5.98
